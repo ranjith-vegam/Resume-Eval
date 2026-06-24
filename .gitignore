@@ -1,0 +1,20 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Frontend
+frontend/node_modules
+static/
+
+# Claude Code local settings/state (can accumulate secrets in permission allowlists)
+.claude/
+
+# Secrets
+.env
