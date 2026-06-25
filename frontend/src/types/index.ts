@@ -17,6 +17,7 @@ export interface EvaluationResult {
   candidate_phone: string | null;
   kpi_scores: Record<string, number>;
   weighted_score: number;
+  manual_selected?: boolean | null;
 }
 
 export interface ResultsStats {

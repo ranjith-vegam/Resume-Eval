@@ -25,6 +25,10 @@ function pickDefaultBatch(list: BatchSummary[], suite: string, preferred: string
   return pool[0].name; // list is sorted most-recent-first
 }
 
+function effectiveSelected(r: EvaluationResult, threshold: number): boolean {
+  return r.manual_selected ?? r.weighted_score >= threshold;
+}
+
 export function Dashboard() {
   const { suiteName, batchName, selectionThreshold, setSelectionThreshold, goToStep } = useEvalStore();
   const addToast = useToastStore((s) => s.addToast);
@@ -132,8 +136,19 @@ export function Dashboard() {
     api.getSuite(s.id).then(setCriteriaSuite).catch(() => setCriteriaSuite(null));
   }, [selectedSuite, suites]);
 
+  const handleSetSelection = async (resumeId: string, selected: boolean | null) => {
+    if (!selectedBatch) return;
+    setResults((prev) => prev.map((r) => (r.resume_id === resumeId ? { ...r, manual_selected: selected } : r)));
+    try {
+      await api.setSelection(selectedBatch, resumeId, selected);
+    } catch (e: unknown) {
+      addToast((e as Error).message || "Failed to update selection.", "error");
+      fetchResults();
+    }
+  };
+
   const selectedCount = useMemo(
-    () => results.filter((r) => r.weighted_score >= selectionThreshold).length,
+    () => results.filter((r) => effectiveSelected(r, selectionThreshold)).length,
     [results, selectionThreshold]
   );
   const notSelectedCount = results.length - selectedCount;
@@ -304,6 +319,7 @@ export function Dashboard() {
               order={order}
               setOrder={(o) => setOrder(o)}
               threshold={selectionThreshold}
+              onSetSelection={handleSetSelection}
             />
           )}
         </>

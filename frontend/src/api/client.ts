@@ -71,6 +71,13 @@ export const api = {
   deleteBatch: (name: string) =>
     req<{ ok: boolean }>(`/batches/${encodeURIComponent(name)}`, { method: "DELETE" }),
 
+  setSelection: (batchName: string, resumeId: string, selected: boolean | null) =>
+    req<{ ok: boolean }>(`/batches/${encodeURIComponent(batchName)}/${resumeId}/selection`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selected }),
+    }),
+
   exportBatchCSV: (name: string, threshold?: number) =>
     `${BASE}/batches/${encodeURIComponent(name)}/export/csv${threshold != null ? `?threshold=${threshold}` : ""}`,
 

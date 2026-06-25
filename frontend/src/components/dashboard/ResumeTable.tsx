@@ -1,6 +1,10 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { ChevronDown, ChevronUp, Search, ChevronLeft, ChevronRight, Phone } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, ChevronLeft, ChevronRight, Phone, RotateCcw } from "lucide-react";
 import type { EvaluationResult } from "../../types";
+
+function effectiveSelected(r: EvaluationResult, threshold: number): boolean {
+  return r.manual_selected ?? r.weighted_score >= threshold;
+}
 
 const AVATAR_COLORS = [
   "bg-blue-500",
@@ -36,11 +40,12 @@ interface Props {
   order: "asc" | "desc";
   setOrder: (o: "asc" | "desc") => void;
   threshold: number;
+  onSetSelection: (resumeId: string, selected: boolean | null) => void;
 }
 
 const PAGE_SIZE = 20;
 
-export function ResumeTable({ results, sort, setSort, order, setOrder, threshold }: Props) {
+export function ResumeTable({ results, sort, setSort, order, setOrder, threshold, onSetSelection }: Props) {
   const [filter, setFilter] = useState<"all" | "selected" | "not_selected">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -66,8 +71,8 @@ export function ResumeTable({ results, sort, setSort, order, setOrder, threshold
 
   const filtered = useMemo(() => {
     let list = results;
-    if (filter === "selected") list = list.filter((r) => r.weighted_score >= threshold);
-    else if (filter === "not_selected") list = list.filter((r) => r.weighted_score < threshold);
+    if (filter === "selected") list = list.filter((r) => effectiveSelected(r, threshold));
+    else if (filter === "not_selected") list = list.filter((r) => !effectiveSelected(r, threshold));
 
     if (!debouncedQuery) return list;
     const q = debouncedQuery.toLowerCase();
@@ -179,7 +184,8 @@ export function ResumeTable({ results, sort, setSort, order, setOrder, threshold
               </tr>
             )}
             {paginated.map((r) => {
-              const isSelected = r.weighted_score >= threshold;
+              const isSelected = effectiveSelected(r, threshold);
+              const isManual = r.manual_selected != null;
               const name = r.candidate_name || r.filename;
 
               return (
@@ -233,11 +239,28 @@ export function ResumeTable({ results, sort, setSort, order, setOrder, threshold
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      isSelected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"
-                    }`}>
-                      {isSelected ? "Selected" : "Not Selected"}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => onSetSelection(r.resume_id, !isSelected)}
+                        title={isManual ? "Manually set — click to flip" : "Click to override"}
+                        className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                          isSelected
+                            ? "bg-green-100 text-green-700 hover:bg-green-200"
+                            : "bg-red-100 text-red-600 hover:bg-red-200"
+                        } ${isManual ? "ring-2 ring-offset-1 " + (isSelected ? "ring-green-400" : "ring-red-300") : ""}`}
+                      >
+                        {isSelected ? "Selected" : "Not Selected"}
+                      </button>
+                      {isManual && (
+                        <button
+                          onClick={() => onSetSelection(r.resume_id, null)}
+                          title="Reset to automatic (based on threshold)"
+                          className="text-slate-300 hover:text-slate-500 transition-colors"
+                        >
+                          <RotateCcw size={12} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
